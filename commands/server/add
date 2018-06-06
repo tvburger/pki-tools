@@ -77,7 +77,7 @@ function run {
         -CAkey "$ca_key_file" \
         -passin "pass:$PASSPHRASE_IN" \
         -out "$server_dir/client.crt"
-    openssl rsa -in "$server_dir/client.key" -des3 -out "$server_dir/client.id_rsa" -nodes
+    openssl rsa -in "$server_dir/client.key" -des3 -out "$server_dir/client.id_rsa"
     ssh-keygen -y -f "$server_dir"/client.id_rsa > "$server_dir"/client.id_rsa.pub
 
     echo "Server key generated"
