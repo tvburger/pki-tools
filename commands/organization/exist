@@ -1,0 +1,35 @@
+#!/bin/bash
+
+function description {
+    echo "Returns if an organization exist"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate organization exist <organization_id>'
+    echo
+    echo $(description)
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        1)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+    then
+        echo "no"
+    else
+        echo "yes"
+    fi
+}

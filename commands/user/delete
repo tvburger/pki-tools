@@ -1,0 +1,51 @@
+#!/bin/bash
+
+function description {
+    echo "Delete a user"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate user delete <organization_id> <username>'
+    echo
+    echo $(description)
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        2)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+    then
+        log_err "Organization does not exist!"
+        fail
+    fi
+
+    local username="`arg 2`"
+    local user_dir="$organization_dir/users/$username"
+    if [ ! -d "$user_dir" ];
+    then
+        log_err "User does not exist!"
+        fail
+    else
+        local confirm
+        read -p "Delete existing? (y/N) : " confirm
+        if [ ! "$confirm" = y ]; then
+            log_err "Not deleting. Aborting!"
+            fail
+        fi
+    fi
+
+    rm -r "$user_dir"
+}

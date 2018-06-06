@@ -1,0 +1,74 @@
+#!/bin/bash
+
+function description {
+    echo "Generates new CA key and certificate"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate authority generate <organization_id>'
+    echo
+    echo $(description)
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        1)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+       then
+       log_err "Organization does not exist!"
+       fail
+    fi
+
+    local check=$(invoke_self authority exist "$organization_id")
+    case $check in
+        "yes")
+            local confirm
+            read -p "Overwrite existing? (y/N) : " confirm
+            if [ ! "$confirm" = y ]; then
+                log_err "Not overwriting. Aborting!"
+                fail
+            fi
+            ;;
+        "no")
+            ;;
+        *)
+            log_err "Unexpected return from 'certificate authority exist \"$organization_id\"'"
+            fail
+    esac
+
+    source "$organization_dir/organization.cfg"
+
+    if [ ! -d "$organization_dir/CA" ]; then
+        mkdir "$organization_dir/CA"
+    fi
+
+    ask_passphrase_out
+
+    local subject
+    subject="/C="$(escape_slash "$CONF_COUNTRY_CODE")"/ST="$(escape_slash "$CONF_STATE_OR_PROVINCE_NAME")"/L="$(escape_slash "$CONF_LOCALITY_NAME")"/O="$(escape_slash "$CONF_ORGANIZATION_NAME")"/CN=Root CA"
+    /usr/bin/openssl req \
+        -batch \
+        -utf8 \
+        -new \
+        -x509 \
+        -newkey rsa:4096 \
+        -days 356 \
+        -subj "$subject" \
+        -keyout "$organization_dir/CA/ca.key" \
+        -out "$organization_dir/CA/ca.crt" \
+        -passout "pass:$PASSPHRASE_OUT"
+    echo "Certificate keys generated"
+}

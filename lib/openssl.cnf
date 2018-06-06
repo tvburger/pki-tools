@@ -1,0 +1,28 @@
+[ req ]
+default_bits           = 2048
+default_md             = rsa
+default_keyfile        = client.key
+distinguished_name     = req_distinguished_name
+
+[ req_distinguished_name ]
+countryName            = Country Name (2 letter code)
+countryName_min        = 2
+countryName_max        = 2
+stateOrProvinceName    = State or Province Name (full name)
+localityName           = Locality Name (eg, city)
+0.organizationName     = Organization Name (eg, company)
+organizationalUnitName = Organizational Unit Name (eg, section)
+commonName             = Common Name (eg, fully qualified host name)
+commonName_max         = 64
+emailAddress           = Email Address
+emailAddress_max       = 64
+
+[ v3_client_req ]
+keyUsage               = digitalSignature, keyAgreement, dataEncipherment
+extendedKeyUsage       = clientAuth, codeSigning, emailProtection
+subjectAltName         = ${ENV::SAN}
+
+[ v3_server_req ]
+keyUsage               = digitalSignature, keyAgreement, keyEncipherment
+extendedKeyUsage       = serverAuth, clientAuth, codeSigning, emailProtection
+subjectAltName         = ${ENV::SAN}

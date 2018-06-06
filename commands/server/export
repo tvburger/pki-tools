@@ -1,0 +1,70 @@
+#!/bin/bash
+
+function description {
+    echo "Exports the private key or certificate of a server"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate server export <organization_id> <server_fqdn> <file_type>'
+    echo
+    echo "  file_type = 'certificate' or 'privatekey'"
+    echo
+    echo $(description)
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        3)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+    then
+        log_err "Organization does not exist!"
+        fail
+    fi
+
+    local server_fqdn="`arg 2`"
+    local server_dir="$organization_dir/servers/$server_fqdn"
+    if [ ! -d "$server_dir" ];
+    then
+        log_err "Server does not exist!"
+        fail
+    fi
+
+    local file_type="`arg 3`"
+    case $file_type in
+        certificate)
+            local certificate_file="$server_dir/client.crt"
+            if [ ! -f "$certificate_file" ];
+            then
+                log_err "server certificate file not present!"
+                fail
+            fi
+            cat "$certificate_file"
+            ;;
+        privatekey)
+            local privatekey_file="$server_dir/client.key"
+            if [ ! -f "$privatekey_file" ];
+            then
+                log_err "server private key file not present!"
+                fail
+            fi
+            cat "$privatekey_file"
+            ;;
+        *)
+            print_help
+            fail
+            ;;
+    esac
+}

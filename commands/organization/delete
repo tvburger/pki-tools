@@ -1,0 +1,49 @@
+#!/bin/bash
+
+function description {
+    echo "Delete an organization and all related information"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate organization delete <organization_id>'
+    echo
+    echo $(description)
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        1)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+    then
+        log_err "Organization does not exist!"
+        fail
+    else
+        local confirm
+        echo "!!! WARNING: ALL DATA WILL BE DELETED OF $organization_id, this includes:"
+        echo "!!! - the CA private key and certificate, if present"
+        echo "!!! - all server certificates and keys, if present"
+        echo "!!! - all client certificates and keys, if present"
+        echo "!!! - any unknown data in the organization's directory, if present"
+        read -p "Delete existing? (y/N) : " confirm
+        if [ ! "$confirm" = y ]; then
+            log_err "Not deleting. Aborting!"
+            fail
+        fi
+    fi
+
+    rm -rf "$organization_dir"
+    echo "Organization has been deleted"
+}

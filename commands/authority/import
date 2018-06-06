@@ -1,0 +1,52 @@
+#!/bin/bash
+
+function description {
+    echo "Imports existing CA key and certificate"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate authority import <organization_id> <private_key_file> <certificate_file>'
+    echo
+    echo $(description)
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        3)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+    then
+        log_err "Organization does not exist!"
+        fail
+    fi
+
+    local private_key_file="`arg 2`"
+    if [ ! -r "$private_key_file" ];
+    then
+        echo "certificate: permission denied to read private key file: $private_key_file"
+        exit 1
+    fi
+
+    local certificate_file="`arg 3`"
+    if [ ! -r "$certificate_file" ];
+    then
+        echo "Error: permission denied to read certificate file: $certificate_file"
+        exit 1
+    fi
+
+    install -dv -m 700 "$organization_dir/CA"
+    install -bCv -m 600 "$private_key_file" "$organization_dir/CA/ca.key"
+    install -bCv -m 600 "$certificate_file" "$organization_dir/CA/ca.crt"
+}

@@ -1,0 +1,28 @@
+#!/bin/bash
+
+function description {
+    echo "Returns information of the server certificate"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate server info <organization_id> <server_fqdn>'
+    echo
+    echo $(description)
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        2)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    invoke_self server export "`arg 1`" "`arg 2`" certificate | openssl x509 -text -noout
+}

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+function description {
+    echo "List organizations"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate organization list'
+    echo
+    echo $(description)
+}
+
+function run {
+    if [ ! "`argc`" -eq 0 ];
+    then
+        invalid_arguments
+    fi
+
+    echo "ORGANIZATION_ID"
+    ( cd "$CERT_LIBDIR" && find . -mindepth 1 -maxdepth 1 -type d | cut -b3- )
+
+}

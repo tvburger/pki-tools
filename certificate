@@ -1,0 +1,249 @@
+#!/bin/bash
+
+set -e
+
+### GLOBAL VARS ###
+CERTIFICATE_CMD=$0
+CERT_LIBDIR="${CERT_LIBDIR:-/etc/certs}"
+BASE_DIR="$( ( cd $(dirname $0) && pwd ) )"
+
+COMMAND_PATH="$BASE_DIR/commands"
+COMMAND_STACK=
+COMMAND_ARGS=("$@")
+
+PASSPHRASE_IN=
+PASSPHRASE_OUT=
+
+OPENSSL_CONF_PATH="$BASE_DIR/lib/openssl.cnf"
+# NEEDED FOR OPENSSL CONF
+export SAN=
+#######
+
+###################
+
+function escape_double_quote {
+    echo -nE "$*" | sed -e 's|\\|\\\\|g' | sed -e 's|"|\\"|g'
+}
+
+function escape_slash {
+    echo -nE "$*" | sed -e 's|\\|\\\\|g' | sed -e 's|"|\\"|g' | sed -e 's|/|\\/|g' | sed -e 's|=|\\=|g'
+}
+
+function log_err {
+    ( >&2 echo "certificate: $*" )
+}
+
+function fail {
+    exit 1
+}
+
+function arg_shift {
+    local shift_size
+    if [ "$1" ]; then
+        shift_size=$1
+    else
+        shift_size=1
+    fi
+    COMMAND_ARGS=("${COMMAND_ARGS[@]:$shift_size}")
+}
+
+function argc {
+    echo -n ${#COMMAND_ARGS[@]}
+}
+
+function arg {
+    echo -n "${COMMAND_ARGS[$(($1-1))]}"
+}
+
+function invalid_command {
+    log_err "'$*' is not a command."
+    local help_command=$(echo certificate ${@:1:$#-1})
+    log_err "See '$help_command' for help"
+    fail
+}
+
+function invalid_arguments {
+    log_err "Invalid arguments: ${COMMAND_ARGS[*]}"
+    log_err "See '$COMMAND_STACK' for help"
+    fail
+}
+
+function ask_passphrase_in {
+    if [ "$PASSPHRASE_IN" ]; then
+        return
+    fi
+    if [ "$1" ]; then
+        prompt="$1";
+    else
+        prompt="Passphrase: "
+    fi
+    OLD_IFS="$IFS"
+    IFS=''
+    read -r -s -p "$prompt" PASSPHRASE_IN && echo
+    IFS="$OLD_IFS"
+}
+
+function ask_passphrase_out {
+    if [ "$PASSPHRASE_OUT" ]; then
+        return
+    fi
+    if [ "$1" ]; then
+        prompt1="$1";
+    else
+        prompt1="Passphrase to use: "
+    fi
+    if [ "$2" ]; then
+        prompt2="$2";
+    else
+        prompt2="Re-enter passphrase: "
+    fi
+    OLD_IFS="$IFS"
+    IFS=''
+    local passphrase
+    read -r -s -p "$prompt1" passphrase && echo
+    local passphrase2
+    read -r -s -p "$prompt2" passphrase2 && echo
+    IFS="$OLD_IFS"
+    if [ "$passphrase" != "$passphrase2" ]; then
+        log_err "Passphrases differ!"
+        fail
+    fi
+    PASSPHRASE_OUT="$passphrase"
+}
+
+function invoke_self {
+    local frame_command_path="$COMMAND_PATH";
+    local frame_command_stack="$COMMAND_STACK";
+    local frame_command_args=("${COMMAND_ARGS[@]}")
+    local frame_passphrase_in="$PASSPHRASE_IN"
+    local frame_passphrase_out="$PASSPHRASE_OUT"
+
+    COMMAND_PATH="$BASE_DIR/commands"
+    COMMAND_STACK=
+    COMMAND_ARGS=("$@")
+    find_command
+    run_command
+
+    COMMAND_PATH="$frame_command_path"
+    COMMAND_STACK="$frame_command_stack"
+    COMMAND_ARGS=("${frame_command_args[@]}")
+    PASSPHRASE_IN="$frame_passphrase_in"
+    PASSPHRASE_OUT="$frame_passphrase_out"
+}
+
+function source_help_file {
+    if [ -d "$1" ];
+    then
+        source "$1/help"
+    else
+        source "$1"
+    fi
+}
+
+function print_help {
+    echo
+    echo "Usage:  $1"
+    echo
+    echo $(description)
+    echo
+    echo "Commands: "
+    local command
+    local print_help
+    for command in $(ls "$2" ); do
+        unset print_help
+        if [ -d "$2/$command" ]; then
+            source "$2/$command/help"
+            print_help=true
+        else
+            unset run
+            source "$2/$command"
+            if [[ $(type -t run) ]]; then
+                print_help=true
+            fi
+        fi
+        if [ "$print_help" ]; then
+            printf "  %-16s %s\n" "$command" "$(description)"
+        fi
+    done
+    echo
+}
+
+function find_command {
+    while [ ${#COMMAND_ARGS} -gt 0 ]; do
+        local argument="${COMMAND_ARGS[0]}"
+        if [[ $argument == -* ]]; then
+            break;
+        fi
+        COMMAND_PATH="$COMMAND_PATH/$argument"
+        COMMAND_STACK="$(echo -n $COMMAND_STACK $argument)"
+        COMMAND_ARGS=("${COMMAND_ARGS[@]:1}")
+        if [ -f "$COMMAND_PATH" ]; then
+            break;
+        elif [ ! -d "$COMMAND_PATH" ]; then
+            invalid_command $COMMAND_STACK;
+        fi
+    done
+}
+
+function run_command {
+    if [ -d "$COMMAND_PATH" ]; then
+        source "$COMMAND_PATH/help"
+        case `argc` in
+            0)
+                print_help "certificate $COMMAND_STACK" "$COMMAND_PATH"
+                exit
+                ;;
+            *)
+                invalid_arguments
+                fail
+                ;;
+        esac
+    else
+        source "$COMMAND_PATH"
+        if [ ! $(type -t run) ]; then
+            invalid_command $COMMAND_STACK
+        fi
+        if [ "$COMMAND_ARGS" = "--help" ]; then
+            print_help
+        else
+            process_flags
+            if [ "`arg 1`" = "--passphrase" ]; then
+                PASSPHRASE_IN="`arg 2`"
+                shift 2
+            fi
+            run
+        fi
+    fi
+}
+
+function process_flags {
+    while [ `argc` -gt 0 ]; do
+        case "`arg 1`" in
+        --help)
+            if [ -d "$COMMAND_PATH" ]; then
+                source "$COMMAND_PATH/help"
+                print_help "certificate $COMMAND_STACK" "$COMMAND_PATH"
+                exit
+            else
+                source "$COMMAND_PATH"
+                print_help
+                exit
+            fi
+            ;;
+        --passin)
+            PASSPHRASE_IN="`arg 2`"
+            arg_shift 2
+            ;;
+        --passout)
+            PASSPHRASE_OUT="`arg 2`"
+            arg_shift 2
+            ;;
+        *)
+            return
+        esac
+    done
+}
+
+find_command
+process_flags
+run_command

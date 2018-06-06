@@ -1,0 +1,31 @@
+#!/bin/bash
+
+function description {
+    echo "List users"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate user list'
+    echo
+    echo $(description)
+}
+
+function run {
+    if [ ! "`argc`" -eq 1 ];
+    then
+        invalid_arguments
+    fi
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+       then
+       log_err "Organization does not exist!"
+       fail
+    fi
+
+    echo "USERNAME"
+    ( cd "$CERT_LIBDIR/$organization_id/users" && find . -mindepth 1 -maxdepth 1 -type d | cut -b3- )
+
+}

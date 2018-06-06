@@ -1,0 +1,42 @@
+#!/bin/bash
+
+function description {
+    echo "Returns if a CA has been defined"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate authority exist <organization_id>'
+    echo
+    echo $(description)
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        1)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+    then
+        log_err "Organization does not exist!"
+        fail
+    fi
+
+    local certificate_file="$organization_dir/CA/ca.crt"
+    if [ -f "$certificate_file" ];
+    then
+        echo "yes"
+    else
+        echo "no"
+    fi
+}

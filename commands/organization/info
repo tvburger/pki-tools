@@ -1,0 +1,48 @@
+#!/bin/bash
+
+function description {
+    echo "Returns the information of an organization"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate organization info <organization_id>'
+    echo
+    echo $(description)
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        1)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+    then
+        log_err "Organization does not exist!"
+        fail
+    fi
+
+    local organization_file="$organization_dir/organization.cfg"
+    if [ ! -f "$organization_file" ];
+    then
+        log_err "Organization file not present!"
+        fail
+    fi
+
+    source "$organization_file"
+    echo "Organization ID                     : $CONF_ORGANIZATION_ID"
+    echo "Organization Name                   : $CONF_ORGANIZATION_NAME"
+    echo "Contry Code (2 letter code)         : $CONF_COUNTRY_CODE"
+    echo "State or Province Name (full name)  : $CONF_STATE_OR_PROVINCE_NAME"
+    echo "Locality Name (eg, name of city)    : $CONF_LOCALITY_NAME"
+}

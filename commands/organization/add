@@ -1,0 +1,65 @@
+#!/bin/bash
+
+function description {
+    echo "Adds a new organization"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate organization add <organization_id>'
+    echo
+    echo "  organization_id = an identifier for the organization"
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        1)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    local organization_id="`arg 1`"
+    if [[ ! "$organization_id" =~ ^[A-Za-z][A-Za-z0-9_.\-]+$ ]]; then
+        log_err "Invalid value: organization_id is not an identifier! '$organization_id'"
+        log_err "- Must start with letter or digit (thus minimum length 1)"
+        log_err "- Except for first character: can letter (A-Za-z), digit (0-9), underscore '_', hyphen '-' or dot '.'"
+        fail
+    fi
+
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ -d "$organization_dir" ]; then
+        log_err "Organization does already exist!"
+        fail
+    elif [ -e "$organization_dir" ]; then
+        log_err "File found that prevents creation: $organization_dir"
+        fail
+    fi
+
+    local country_code
+    local state_or_province_name
+    local locality_name
+    echo "Organization ID                     : $organization_id"
+    read -r -p "Organization Name                   : " organization_name
+    read -r -p "Contry Code (2 letter code)         : " country_code
+    read -r -p "State or Province Name (full name)  : " state_or_province_name
+    read -r -p "Locality Name (eg, name of city)    : " locality_name
+
+    local conf_file="$organization_dir/organization.cfg"
+
+    install -d -m 700 "$organization_dir"
+    install -d -m 700 "$organization_dir"/servers
+    install -d -m 700 "$organization_dir"/users
+    echo 'CONF_ORGANIZATION_ID="'$(escape_double_quote "$organization_id")'"' >> "$conf_file"
+    echo 'CONF_ORGANIZATION_NAME="'$(escape_double_quote "$organization_name")'"' >> "$conf_file"
+    echo 'CONF_COUNTRY_CODE="'$(escape_double_quote "$country_code")'"' >> "$conf_file"
+    echo 'CONF_STATE_OR_PROVINCE_NAME="'$(escape_double_quote "$state_or_province_name")'"' >> "$conf_file"
+    echo 'CONF_LOCALITY_NAME="'$(escape_double_quote "$locality_name")'"' >> "$conf_file"
+
+    echo "Organization has been added"
+}

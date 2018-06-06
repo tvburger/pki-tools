@@ -1,0 +1,62 @@
+#!/bin/bash
+
+function description {
+    echo "Exports the CA private key or certificate"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate authority export <organization_id> <file_type>'
+    echo
+    echo "  file_type = 'certificate' or 'privatekey'"
+    echo
+    echo $(description)
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        2)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+    then
+        log_err "Organization does not exist!"
+        fail
+    fi
+
+    local file_type="`arg 2`"
+    case $file_type in
+        certificate)
+            local certificate_file="$organization_dir/CA/ca.crt"
+            if [ ! -f "$certificate_file" ];
+            then
+                log_err "CA certificate file not present!"
+                fail
+            fi
+            cat "$certificate_file"
+            ;;
+        privatekey)
+            local privatekey_file="$organization_dir/CA/ca.key"
+            if [ ! -f "$privatekey_file" ];
+            then
+                log_err "CA private key file not present!"
+                fail
+            fi
+            cat "$privatekey_file"
+            ;;
+        *)
+            print_help
+            fail
+            ;;
+    esac
+}

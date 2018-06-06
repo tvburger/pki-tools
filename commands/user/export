@@ -1,0 +1,97 @@
+#!/bin/bash
+
+function description {
+    echo "Exports keys or certificate of a user"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate user export <organization_id> <username> <file_type>'
+    echo
+    echo "  file_type = 'sslcertificate', 'sslprivatekey', 'sshprivate', 'sshpublic' or 'pkcs'"
+    echo
+    echo $(description)
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        3)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+    then
+        log_err "Organization does not exist!"
+        fail
+    fi
+
+    local username="`arg 2`"
+    local user_dir="$organization_dir/users/$username"
+    if [ ! -d "$user_dir" ];
+    then
+        log_err "User does not exist!"
+        fail
+    fi
+
+    local file_type="`arg 3`"
+    case $file_type in
+        sslcertificate)
+            local certificate_file="$user_dir/client.crt"
+            if [ ! -f "$certificate_file" ];
+            then
+                log_err "user certificate file not present!"
+                fail
+            fi
+            cat "$certificate_file"
+            ;;
+        sslprivatekey)
+            local privatekey_file="$user_dir/client.key"
+            if [ ! -f "$privatekey_file" ];
+            then
+                log_err "user private key file not present!"
+                fail
+            fi
+            cat "$privatekey_file"
+            ;;
+        sshprivate)
+            local certificate_file="$user_dir/client.id_rsa"
+            if [ ! -f "$certificate_file" ];
+            then
+                log_err "user private SSH key file not present!"
+                fail
+            fi
+            cat "$certificate_file"
+            ;;
+        sshpublic)
+            local certificate_file="$user_dir/client.id_rsa.pub"
+            if [ ! -f "$certificate_file" ];
+            then
+                log_err "user public SSH key file not present!"
+                fail
+            fi
+            cat "$certificate_file"
+            ;;
+        pkcs)
+            local certificate_file="$user_dir/client.p12"
+            if [ ! -f "$certificate_file" ];
+            then
+                log_err "user pkcs file not present!"
+                fail
+            fi
+            cat "$certificate_file"
+            ;;
+        *)
+            print_help
+            fail
+            ;;
+    esac
+}

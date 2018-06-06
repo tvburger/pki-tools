@@ -1,0 +1,57 @@
+#!/bin/bash
+
+function description {
+    echo "Delete the CA private key and certificate"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate authority delete <organization_id>'
+    echo
+    echo $(description)
+}
+
+function run {
+    case `argc` in
+        0)
+            print_help
+            exit
+            ;;
+        1)
+            ;;
+        *)
+            invalid_arguments
+            ;;
+    esac
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+    then
+        log_err "Organization does not exist!"
+        fail
+    else
+        local confirm
+        read -p "Delete existing? (y/N) : " confirm
+        if [ ! "$confirm" = y ]; then
+            log_err "Not deleting. Aborting!"
+            fail
+        fi
+    fi
+
+    local certificate_file="$organization_dir/CA/ca.crt"
+    if [ -f "$certificate_file" ];
+    then
+        rm -v "$certificate_file"
+    fi
+
+    local private_key_file="$organization_dir/CA/ca.key"
+    if [ -f "$private_key_file" ];
+    then
+        rm -v "$private_key_file"
+    fi
+
+    if [ 0 -eq $(ls "$organization_dir/CA" | wc -l) ]; then
+        rmdir "$organization_dir/CA"
+    fi
+}

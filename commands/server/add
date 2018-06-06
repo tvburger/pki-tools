@@ -1,0 +1,84 @@
+#!/bin/bash
+
+function description {
+    echo "Adds a new server to an organization"
+}
+
+function print_help {
+    echo
+    echo 'Usage:  certificate server add <organization_id> <server_fqdn> [ <alt_server_fqdn> ... ]'
+    echo
+    echo $(description)
+}
+
+function run {
+    if [ `argc` -lt 2 ]; then
+        invalid_arguments
+    fi
+
+    local organization_id="`arg 1`"
+    local organization_dir="$CERT_LIBDIR/$organization_id"
+    if [ ! -d "$organization_dir" ];
+       then
+       log_err "Organization does not exist!"
+       fail
+    fi
+
+    local check=$(invoke_self authority exist "$organization_id")
+    if [ "$check" != "yes" ]; then
+        log_err "No certificate authority present!"
+        fail
+    fi
+
+    local server_fqdn="`arg 2`"
+    local server_dir="$organization_dir/servers/$server_fqdn"
+    if [ -d "$server_dir" ]; then
+        log_err "Server already present!"
+        fail
+    fi
+
+    SAN="DNS:$server_fqdn"
+    arg_shift 2
+
+    while [ `argc` -gt 0 ]; do
+        SAN="$SAN,DNS:`arg 1`"
+        arg_shift 1
+    done
+
+    local ca_srl_file="$organization_dir/CA/ca.srl"
+    local ca_key_file="$organization_dir/CA/ca.key"
+    local ca_crt_file="$organization_dir/CA/ca.crt"
+
+    ask_passphrase_in "Enter passphrase to read CA key: "
+
+    source "$organization_dir/organization.cfg"
+    local subject
+    subject="/C="$(escape_slash "$CONF_COUNTRY_CODE")"/ST="$(escape_slash "$CONF_STATE_OR_PROVINCE_NAME")"/L="$(escape_slash "$CONF_LOCALITY_NAME")"/O="$(escape_slash "$CONF_ORGANIZATION_NAME")"/CN=$server_fqdn"
+
+    umask 077
+    mkdir -p "$server_dir"
+    openssl req \
+        -utf8 \
+        -config "$OPENSSL_CONF_PATH" \
+        -subj "$subject" \
+        -out "$server_dir/client.csr" \
+        -newkey rsa:2048 \
+        -keyout "$server_dir/client.key" \
+        -nodes
+    openssl x509 \
+        -req \
+        -extfile "$OPENSSL_CONF_PATH" \
+        -extensions v3_server_req \
+        -days 365 \
+        -in "$server_dir/client.csr" \
+        -CAcreateserial \
+        -CAserial "$ca_srl_file" \
+        -CA "$ca_crt_file" \
+        -CAkey "$ca_key_file" \
+        -passin "pass:$PASSPHRASE_IN" \
+        -out "$server_dir/client.crt"
+    openssl rsa -in "$server_dir/client.key" -des3 -out "$server_dir/client.id_rsa" -nodes
+    ssh-keygen -y -f "$server_dir"/client.id_rsa > "$server_dir"/client.id_rsa.pub
+
+    echo "Server key generated"
+}
